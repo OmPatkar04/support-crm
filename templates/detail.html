@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <title>Ticket Detail | Support CRM</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen">
+  <nav class="bg-blue-700 text-white px-6 py-4 flex justify-between items-center shadow">
+    <h1 class="text-xl font-bold">🎫 Support CRM</h1>
+    <a href="/" class="bg-white text-blue-700 px-4 py-2 rounded font-semibold hover:bg-blue-50">← All Tickets</a>
+  </nav>
+
+  <div class="max-w-2xl mx-auto mt-10 space-y-6">
+    <!-- Ticket Info -->
+    <div class="bg-white rounded-xl shadow p-6" id="ticketCard">
+      <p class="text-gray-400 text-sm">Loading...</p>
+    </div>
+
+    <!-- Update Status -->
+    <div class="bg-white rounded-xl shadow p-6">
+      <h3 class="font-semibold text-gray-700 mb-3">Update Status</h3>
+      <div class="flex gap-3">
+        <select id="statusSelect" class="border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400">
+          <option value="Open">Open</option>
+          <option value="In Progress">In Progress</option>
+          <option value="Closed">Closed</option>
+        </select>
+        <button onclick="updateTicket()" class="bg-blue-700 text-white px-4 py-2 rounded hover:bg-blue-800 transition">Update</button>
+      </div>
+    </div>
+
+    <!-- Add Note -->
+    <div class="bg-white rounded-xl shadow p-6">
+      <h3 class="font-semibold text-gray-700 mb-3">Add Note</h3>
+      <textarea id="noteText" rows="3" class="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 mb-3" placeholder="Add an internal note..."></textarea>
+      <button onclick="addNote()" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition">Add Note</button>
+    </div>
+
+    <!-- Notes List -->
+    <div class="bg-white rounded-xl shadow p-6">
+      <h3 class="font-semibold text-gray-700 mb-3">Notes</h3>
+      <div id="notesList" class="space-y-3 text-sm text-gray-600"></div>
+    </div>
+  </div>
+
+  <script>
+    const ticketId = window.location.pathname.split("/").pop();
+    const statusColors = {
+      "Open": "bg-red-100 text-red-700",
+      "In Progress": "bg-yellow-100 text-yellow-700",
+      "Closed": "bg-green-100 text-green-700"
+    };
+
+    async function loadTicket() {
+      const res = await fetch(`/api/tickets/${ticketId}`);
+      const t = await res.json();
+      const color = statusColors[t.status] || "";
+      document.getElementById("ticketCard").innerHTML = `
+        <div class="flex justify-between items-start">
+          <div>
+            <p class="text-xs text-gray-400 mb-1">Ticket ID</p>
+            <p class="font-mono font-bold text-blue-600 text-lg">${t.ticket_id}</p>
+          </div>
+          <span class="px-3 py-1 rounded-full text-sm font-semibold ${color}">${t.status}</span>
+        </div>
+        <h2 class="text-xl font-bold text-gray-800 mt-3">${t.subject}</h2>
+        <p class="text-gray-600 mt-2">${t.description}</p>
+        <div class="mt-4 grid grid-cols-2 gap-4 text-sm text-gray-500">
+          <div><span class="font-medium text-gray-700">Customer:</span> ${t.customer_name}</div>
+          <div><span class="font-medium text-gray-700">Email:</span> ${t.customer_email}</div>
+          <div><span class="font-medium text-gray-700">Created:</span> ${new Date(t.created_at).toLocaleString()}</div>
+          <div><span class="font-medium text-gray-700">Updated:</span> ${new Date(t.updated_at).toLocaleString()}</div>
+        </div>`;
+      document.getElementById("statusSelect").value = t.status;
+      const notesList = document.getElementById("notesList");
+      if (t.notes.length === 0) {
+        notesList.innerHTML = `<p class="text-gray-400">No notes yet.</p>`;
+      } else {
+        notesList.innerHTML = t.notes.map(n => `
+          <div class="bg-gray-50 rounded p-3 border-l-4 border-blue-400">
+            <p>${n.note_text}</p>
+            <p class="text-xs text-gray-400 mt-1">${new Date(n.created_at).toLocaleString()}</p>
+          </div>`).join("");
+      }
+    }
+
+    async function updateTicket() {
+      const status = document.getElementById("statusSelect").value;
+      await fetch(`/api/tickets/${ticketId}`, {
+        method: "PUT",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({ status })
+      });
+      loadTicket();
+    }
+
+    async function addNote() {
+      const note = document.getElementById("noteText").value.trim();
+      if (!note) return alert("Note cannot be empty.");
+      await fetch(`/api/tickets/${ticketId}`, {
+        method: "PUT",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({ note })
+      });
+      document.getElementById("noteText").value = "";
+      loadTicket();
+    }
+
+    loadTicket();
+  </script>
+</body>
+</html>
